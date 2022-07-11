@@ -1,0 +1,38 @@
+<?php
+
+/**
+ * @file
+ * Contains stchk34.module.
+ */
+
+use Drupal\Core\Routing\RouteMatchInterface;
+
+/**
+ * Implements hook_help().
+ */
+function stchk34_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    // Main module help for the stchk34 module.
+    case 'help.page.stchk34':
+      $output = '';
+      $output .= '<h3>' . t('About') . '</h3>';
+      $output .= '<p>' . t('My Awesome Module') . '</p>';
+      return $output;
+
+    default:
+  }
+}
+
+/**
+ * Implements hook_theme().
+ */
+function stchk34_theme() {
+  return [
+    'stchk34' => [
+      'render element' => 'form',
+      'variables' => [
+        'form' => NULL,
+      ],
+    ],
+  ];
+}

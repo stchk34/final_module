@@ -1,0 +1,8 @@
+.form-table td {
+  max-width: 65px;
+  padding: 0;
+}
+.form-table td:first-child {
+  max-width: 92px;
+  padding: 0;
+}

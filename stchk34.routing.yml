@@ -1,0 +1,6 @@
+Meow.cats:
+  path: '/stchk34/table'
+  defaults:
+    _form: '\Drupal\stchk34\Form\TableForm'
+  requirements:
+    _permission: 'access content'
