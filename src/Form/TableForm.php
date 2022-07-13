@@ -3,207 +3,265 @@
 namespace Drupal\stchk34\Form;
 
 use Drupal\Core\Form\FormBase;
-use Drupal\Core\Form\FormStateinterface;
+use Drupal\Core\Form\FormStateInterface;
 
 /**
- * Main class for form table.
+ * Class that create table form.
  */
 class TableForm extends FormBase {
 
   /**
-   * {@inheritdoc}
+   * Table headers.
+   *
+   * @var array
+   */
+  protected array $header;
+
+  /**
+   * An array with quarter and year cells.
+   *
+   * @var array
+   */
+  protected array $disabledCells;
+
+  /**
+   * Number of row.
+   *
+   * @var int
+   */
+  protected int $rows = 1;
+
+  /**
+   * Number of table.
+   *
+   * @var int
+   */
+  protected int $tables = 1;
+
+  /**
+   * {@inheritDoc}
    */
   public function getFormId() {
-    return 'form_table';
+    return 'table_form';
   }
 
   /**
-   * Contain counts rows in tables.
-   *
-   * @var array
-   *   Array with counts.
+   * Create table head.
    */
-  protected array $rows = [1];
+  public function buildHeader() {
+    $this->header = [
+      'year' => $this->t("Year"),
+      'jan' => $this->t("Jan"),
+      'feb' => $this->t("Feb"),
+      'mar' => $this->t("Mar"),
+      'q1' => $this->t("Q1"),
+      'apr' => $this->t("Apr"),
+      'may' => $this->t("May"),
+      'jun' => $this->t("Jun"),
+      'q2' => $this->t("Q2"),
+      'jul' => $this->t("Jul"),
+      'aug' => $this->t("Aug"),
+      'sep' => $this->t("Sep"),
+      'q3' => $this->t("Q3"),
+      'oct' => $this->t("Oct"),
+      'nov' => $this->t("Nov"),
+      'dec' => $this->t("Dec"),
+      'q4' => $this->t("Q4"),
+      'ytd' => $this->t("YTD"),
+    ];
+    $this->disabledCells = [
+      'year' => $this->t("Year"),
+      'q1' => $this->t("Q1"),
+      'q2' => $this->t("Q2"),
+      'q3' => $this->t("Q3"),
+      'q4' => $this->t("Q4"),
+      'ytd' => $this->t("YTD"),
+    ];
+  }
 
   /**
-   * Contain count tables on page.
+   * Function to building form.
    *
-   * @var int
-   *   Count tables.
-   */
-  protected int $countTable = 1;
-
-  /**
-   * {@inheritdoc}
+   * {@inheritDoc}
    */
   public function buildForm(array $form, FormStateInterface $form_state) {
-
-    // Array that contain all table headers.
-    $table_headers = [
-      $this->t('Year'),
-      $this->t('Jan'),
-      $this->t('Feb'),
-      $this->t('Mar'),
-      $this->t('Q1'),
-      $this->t('Apr'),
-      $this->t('May'),
-      $this->t('Jun'),
-      $this->t('Q2'),
-      $this->t('Jul'),
-      $this->t('Aug'),
-      $this->t('Sep'),
-      $this->t('Q3'),
-      $this->t('Oct'),
-      $this->t('Nov'),
-      $this->t('Dec'),
-      $this->t('Q4'),
-      $this->t('YTD'),
-    ];
-
+    $this->buildHeader();
     $form['#prefix'] = '<div id="form-wrapper">';
     $form['#suffix'] = '</div>';
 
-    // Loop by tables.
-    for ($t = 0; $t < $this->countTable; $t++) {
-
-      $form["add_row_{$t}"] = [
-        '#type' => 'submit',
-        '#value' => $this->t('Add year'),
-        '#name' => $t,
-        '#submit' => ['::addRow'],
-      ];
-
-      $form["table_{$t}"] = [
+    for ($i = 0; $i < $this->tables; $i++) {
+      $table_id = $i;
+      $form[$table_id] = [
         '#type' => 'table',
-        '#header' => $table_headers,
+        '#header' => $this->header,
+        '#tree' => 'TRUE',
       ];
-
-      // Loop by rows.
-      for ($i = $this->rows[$t]; $i > 0; $i--) {
-
-        // Loop by columns.
-        foreach ($table_headers as $header) {
-          $disabled = FALSE;
-          $value = NULL;
-          if ($header == 'Year') {
-            $value = date('Y') - $i + 1;
-          }
-          if (in_array($header, ['Year', 'Q1', 'Q2', 'Q3', 'Q4', 'YTD'])) {
-            $disabled = TRUE;
-          }
-          $form["table_{$t}"][$i]["{$header}"] = [ // just $header  dont work
-            '#type' => 'number',
-            '#disabled' => $disabled,
-            '#default_value' => $value ?? '',
-          ];
-        }
-      }
+      $this->buildYear($table_id, $form[$table_id], $form_state);
     }
 
-    $form['add_table'] = [
+    $form['addYear'] = [
       '#type' => 'submit',
-      '#value' => $this->t('Add table'),
-      '#submit' => ['::addTable'],
+      '#value' => $this->t('Add Year'),
+      '#submit' => [
+        '::addYear',
+      ],
+      '#limit_validation_errors' => [],
       '#ajax' => [
+        'callback' => '::ajaxReload',
+        'event' => 'click',
         'wrapper' => 'form-wrapper',
+        'progress' => [
+          'type' => 'none',
+        ],
       ],
     ];
-
-    $form['actions']['submit'] = [
+    $form['addTable'] = [
+      '#type' => 'submit',
+      '#value' => $this->t('Add Table'),
+      '#submit' => [
+        '::addTable',
+      ],
+      '#limit_validation_errors' => [],
+      '#ajax' => [
+        'callback' => '::ajaxReload',
+        'event' => 'click',
+        'wrapper' => 'form-wrapper',
+        'progress' => [
+          'type' => 'none',
+        ],
+      ],
+    ];
+    $form['submit'] = [
       '#type' => 'submit',
       '#value' => $this->t('Submit'),
-      '#name' => 'submit',
       '#ajax' => [
+        'callback' => '::ajaxReload',
         'event' => 'click',
-        'callback' => '::updateFormAjax',
         'wrapper' => 'form-wrapper',
+        'progress' => [
+          'type' => 'none',
+        ],
       ],
     ];
-
     $form['#attached']['library'][] = 'stchk34/stchk34-style';
     return $form;
   }
 
   /**
-   * Callback function for add new table.
+   * Function to building rows.
    */
-  public function addTable(array &$form, FormStateInterface $form_state) {
-    // Plus one table.
-    $this->countTable++;
-    // Set default row count to new table.
-    $this->rows[] = 1;
-    // Rebuild form.
-    $form_state->setRebuild();
+  public function buildYear($table_id, array &$table, FormStateInterface $form_state) {
+    for ($i = $this->rows; $i > 0; $i--) {
+      foreach ($this->header as $key => $value) {
+        $table[$i][$key] = [
+          '#type' => 'number',
+          '#step' => '0.01',
+        ];
+        if (array_key_exists($key, $this->disabledCells)) {
+          $default_value = $form_state->getValue($table_id . '][' . $i . '][' . $key, 0);
+          $table[$i][$key]['#disabled'] = TRUE;
+          $table[$i][$key]['#default_value'] = round($default_value, 2);
+        }
+        $table[$i]['year']['#default_value'] = date('Y') - $i + 1;
+      }
+    }
   }
 
   /**
-   * Callback function for add row button.
+   * Button for adding a new row.
    */
-  public function addRow(array &$form, FormStateInterface $form_state) {
-    // Get table id to add row.
-    $t = $form_state->getTriggeringElement()['#name'];
-    // Add one row.
-    $this->rows[$t]++;
-    print($t);
-    // Rebuild form.
+  public function addYear(array $form, FormStateInterface $form_state) {
+    $this->rows++;
     $form_state->setRebuild();
+    return $form;
   }
 
   /**
-   * {@inheritdoc}
+   * Button for adding a new table.
+   */
+  public function addTable(array $form, FormStateInterface $form_state) {
+    $this->tables++;
+    $form_state->setRebuild();
+    return $form;
+  }
+
+  /**
+   * Function that gets values from the table.
+   */
+  public function clearValues(array $value_table_cell): array {
+    // For adding values from cells in the table.
+    $values = [];
+    // Call inactive cells of the table.
+    $inactive_cells = $this->disabledCells;
+    // Go through rows.
+    for ($i = $this->rows; $i >= 0; $i--) {
+      // Go through rows' values.
+      foreach ($value_table_cell[$i] as $key => $active_cells) {
+        if (!array_key_exists($key, $inactive_cells)) {
+          $values[] = $active_cells;
+        }
+      }
+    }
+    return $values;
+  }
+
+  /**
+   * Function that checks if value is not empty.
+   */
+  public function notEmpty($active_cells): bool {
+    return ($active_cells || $active_cells == '0');
+  }
+
+  /**
+   * Validating the form.
    */
   public function validateForm(array &$form, FormStateInterface $form_state) {
-
-    // Check submit.
-    if ($form_state->getTriggeringElement()['#name'] !== 'submit') {
-      return;
-    }
-
-    // Get all values from tables.
-    $values = $form_state->getValues();
-
-    $smallest_table = array_search(min($this->rows), $this->rows);
-
-    // Loop by count tables.
-    for ($t = 0; $t < $this->countTable; $t++) {
-      $is_value = FALSE;
-      $is_empty = FALSE;
-
-      // Loop by rows in table.
-      for ($r = $this->rows[$t]; $r > 0; $r--) {
-
-        // Loop by table headers.
-        foreach ($values["table_{$t}"][$r] as $head => $val) {
-
-          // Validate on disabled columns.
-          if (in_array($head, ['Year', 'Q1', 'Q2', 'Q3', 'Q4', 'YTD'])) {
-            continue;
+    // Getting values from the table.
+    $table_values = $form_state->getValues();
+    // An array in which are sorted values from the tables.
+    $active_values = [];
+    // Start point of validation.
+    $start_point = NULL;
+    // End point of validation.
+    $end_point = NULL;
+    // Loop for the all tables.
+    for ($i = 0; $i < $this->tables; $i++) {
+      // Call the function that gets values from the table.
+      $cell_values = $this->ClearValues($table_values[$i]);
+      // An array in which are saved and sorted values from the tables.
+      $active_values[] = $cell_values;
+      // Go through cells.
+      foreach ($cell_values as $key => $active_cells) {
+        // Comparing cells in the tables.
+        for ($table_cell = 0; $table_cell <= count($active_values[$i]) - 1; $table_cell++) {
+          if ($this->notEmpty($active_values[0][$table_cell]) !== $this->notEmpty($active_values[$i][$table_cell])) {
+            $form_state->setErrorByName($i, 'Tables are different. Please, check.');
           }
-
-          // Validate table size.
-          if ($r <= $this->rows[$smallest_table]) {
-
-            // Other validation.
-            if (!$is_value && !$is_empty && $val !== '') {
-              $is_value = TRUE;
-            }
-            if ($is_value && !$is_empty && $val == '') {
-              $is_empty = TRUE;
-            }
-            if (!$is_value && $is_empty && $val !== '') {
-              $form_state->setErrorByName('Invalid', $this->t('Invalid'));
-            }
-            if ($is_value && $is_empty && $val !== '') {
-              $form_state->setErrorByName('Invalid', $this->t('Invalid'));
-            }
-
-            if ($values["table_{$smallest_table}"][$r][$head] == '' && $val !== '' ||
-              $values["table_{$smallest_table}"][$r][$head] !== '' && $val == '') {
-              $form_state->setErrorByName('Invalid', $this->t('Invalid'));
-            }
+        }
+       // Value of the start point of the key if the cell is not empty.
+        if (!empty($active_cells)) {
+          $start_point = $key;
+          break;
+        }
+      }
+      // If value of the start point exist, run the loop.
+      if ($start_point !== NULL) {
+        // Going into all filled cells after start point.
+        for ($filled_cell = $start_point; $filled_cell < count($cell_values); $filled_cell++) {
+          // End point if filled cells are empty.
+          if (($cell_values[$filled_cell] == NULL)) {
+            $end_point = $filled_cell;
+            break;
           }
-          else {
-            $form_state->setErrorByName('Invalid', $this->t('Invalid'));
+        }
+      }
+      // If value of the end point exist, run the loop.
+      if ($end_point !== NULL) {
+        // Going into all filled cells after end point.
+        for ($cell = $end_point; $cell < count($cell_values); $cell++) {
+          // If value of the cell is not equal to null.
+          if (($cell_values[$cell]) != NULL) {
+            $form_state->setErrorByName("table-$i", 'Invalid');
           }
         }
       }
@@ -211,55 +269,37 @@ class TableForm extends FormBase {
   }
 
   /**
-   * {@inheritdoc}
+   * {@inheritDoc}
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
-    for ($t = 0; $t < $this->countTable; $t++) {
-      for ($r = $this->rows[$t]; $r > 0; $r--) {
-        $q1 = $q2 = $q3 = $q4 = 0;
-        $val = $form_state->getValue(["table_{$t}", $r]);
+    $values = $form_state->getValues();
+    for ($i = 0; $i < $this->tables; $i++) {
+      foreach ($values[$i] as $row_key => $row) {
+        $path = $i . '][' . $row_key . '][';
 
-        // Check month fields.
-        if ((int) $val['Jan'] != '' || (int) $val['Feb'] != '' || (int) $val['Mar'] != '') {
-          $q1 = round(((int) $val['Jan'] + (int) $val['Feb'] + (int) $val['Mar'] + 1) / 3, 2);
-        }
-        if ((int) $val['Apr'] != '' || (int) $val['May'] != '' || (int) $val['Jun'] != '') {
-          $q2 = round(((int) $val['Apr'] + (int) $val['May'] + (int) $val['Jun'] + 1) / 3, 2);
-        }
-        if ((int) $val['Jul'] != '' || (int) $val['Aug'] != '' || (int) $val['Sep'] != '') {
-          $q3 = round(((int) $val['Jul'] + (int) $val['Aug'] + (int) $val['Sep'] + 1) / 3, 2);
-        }
-        if ((int) $val['Oct'] != '' || (int) $val['Nov'] != '' || (int) $val['Dec'] != '') {
-          $q4 = round(((int) $val['Oct'] + (int) $val['Nov'] + (int) $val['Dec'] + 1) / 3, 2);
-        }
+        // Operations with cell values.
+        $q1 = ((intval($row['jan']) + intval($row['feb']) + intval($row['mar'])) + 1) / 3;
+        $q2 = ((intval($row['apr']) + intval($row['may']) + intval($row['jun'])) + 1) / 3;
+        $q3 = ((intval($row['jul']) + intval($row['aug']) + intval($row['sep'])) + 1) / 3;
+        $q4 = ((intval($row['oct']) + intval($row['nov']) + intval($row['dec'])) + 1) / 3;
+        $ytd = (($q1 + $q2 + $q3 + $q4) + 1) / 4;
 
-        // Set new values to quartets.
-        $form["table_{$t}"][$r]['Q1']['#value'] = $q1;
-        $form["table_{$t}"][$r]['Q2']['#value'] = $q2;
-        $form["table_{$t}"][$r]['Q3']['#value'] = $q3;
-        $form["table_{$t}"][$r]['Q4']['#value'] = $q4;
-
-        // Find and set new value to YTD.
-        $ytd = round(($q1 + $q2 + $q3 + $q4 + 1) / 4, 2);
-        $form["table_{$t}"][$r]['YTD']['#value'] = $ytd;
+        // Set values for inactive cells.
+        $form_state->setValue($path . 'q1', $q1);
+        $form_state->setValue($path . 'q2', $q2);
+        $form_state->setValue($path . 'q3', $q3);
+        $form_state->setValue($path . 'q4', $q4);
+        $form_state->setValue($path . 'ytd', $ytd);
       }
     }
-    // Success message.
-    $this->messenger()->addStatus('Valid');
+    $this->messenger()->addMessage('Form is valid!');
+    $form_state->setRebuild();
   }
 
   /**
-   * Callback function to update form.
-   *
-   * @param array $form
-   *   An associative array containing the structure of the form.
-   * @param \Drupal\Core\Form\FormStateInterface $form_state
-   *   The current state of the form.
-   *
-   * @return array
-   *   Return form to update.
+   * Function for refreshing form.
    */
-  public function updateFormAjax(array $form, FormStateInterface $form_state) {
+  public function ajaxReload(array &$form, FormStateInterface $form_state): array {
     return $form;
   }
 
